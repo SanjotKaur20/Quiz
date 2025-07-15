@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="navbar">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3 position-relative">
+        <a class="navbar-brand text-primary" href="#">CodeQuiz</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
+            <ul class="navbar-nav align-items-center">
+                <li class="nav-item">
+                    <a th:href="@{/user/history}" class="nav-link">
+                        <i class="bi bi-clock-history me-1"></i> View History
+                    </a>
+                </li>
+<li class="nav-item mx-3">
+    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="User" class="profile-img-sm" id="profileIcon">
+
+    <div class="profile-dropdown" id="profileCard">
+        <div class="card-body">
+<center>            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" height="40px" alt="Profile">
+</center>
+            <p class="text-muted mb-2 mt-2">
+                <i class="bi bi-person-circle me-1 text-muted" style="font-size: 1rem;"></i>
+                <span th:text="${user.email}">user@example.com</span>
+            </p>
+
+            <a class="text-muted d-block mb-2" style="text-decoration: none; font-size: 1rem;" th:href="@{/user/change-password}">
+                <i class="bi bi-key-fill me-1 text-muted" style="font-size: 1rem;"></i> Change Password
+            </a>
+
+<center>            <form th:action="@{/logout}" method="post">
+                <button class="btn btn-danger btn-sm mt-2">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                </button>
+            </form>
+</center>        </div>
+    </div>
+</li>
+            </ul>
+        </div>
+    </nav>
+
+    <script>
+        const profileIcon = document.getElementById("profileIcon");
+        const profileCard = document.getElementById("profileCard");
+
+        document.addEventListener("click", function (e) {
+            if (profileIcon && profileIcon.contains(e.target)) {
+                profileCard.style.display = profileCard.style.display === "block" ? "none" : "block";
+            } else if (!profileCard.contains(e.target)) {
+                profileCard.style.display = "none";
+            }
+        });
+    </script>
+</div>
+</body>
+</html>

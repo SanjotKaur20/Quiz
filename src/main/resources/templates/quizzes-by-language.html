@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Quizzes by Language</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        h2 {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        .card-img-top {
+            height: 150px;
+            object-fit: cover;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+        }
+        .card-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .card-text {
+            color: #555;
+            margin-bottom: 1rem;
+        }
+        .btn-back {
+            border-radius: 25px;
+        }
+        .btn-start {
+            border-radius: 25px;
+        }
+                .profile-img-sm {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #0846a1;
+            cursor: pointer;
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: 65px;
+            right: 20px;
+            width: 300px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            z-index: 999;
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 th:text="'Quizzes in ' + ${language.name}">Language Quizzes</h2>
+            <a th:href="@{/user/user-dashboard}" class="btn btn-secondary btn-back">
+                <i class="bi bi-arrow-left-circle me-1"></i> Back
+            </a>
+        </div>
+
+        <div th:if="${#lists.isEmpty(quizzes)}">
+            <p class="text-center">No quizzes available for this language.</p>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-3 g-4" >
+            <div class="col" th:each="quiz : ${quizzes}">
+                <div class="card h-100 shadow-sm">
+                    <img th:src="@{'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnBJVQRO532PwCedlotE0Q5gXeMiqpsRLr-XhlLSeEvv2TTDk5PkgqNinHCfYVJ9UKF5Q&usqp=CAU,' + ${language.name}}"
+                         class="card-img-top"
+                         alt="Quiz Image">
+                    <div class="card-body text-center">
+                        <h5 class="card-title" th:text="${quiz.name}">Quiz Name</h5>
+                        <p class="card-text" th:text="'Level: ' + ${quiz.level}">Level: …</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center mb-3">
+                        <a th:href="@{/user/start-test(quizId=${quiz.id})}"
+                           class="btn btn-success btn-start">
+                            <i class="bi bi-play-circle me-1"></i> Start Quiz
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

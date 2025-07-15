@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Interview Room</title>
+  <style>
+    video { width:45%; border:1px solid #ccc; margin:5px; }
+    #logs { font-family:monospace; font-size:12px; height:150px; overflow:auto; background:#fafafa; border:1px solid #ddd; padding:5px; }
+  </style>
+</head>
+<body>
+  <!-- Hidden roomId from Thymeleaf -->
+  <input type="hidden" id="room-id" th:value="${roomId}" />
+
+  <!-- Local + Remote video tags -->
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay muted playsinline></video>
+  <br/>
+  <button id="startCall">Start Call</button>
+
+  <!-- Optional: on‑page debug logs -->
+  <div id="logs"></div>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+
+  <script>
+    // simple logger
+    const log = msg => {
+      document.getElementById('logs').innerHTML += msg + '<br>';
+      console.log(msg);
+    };
+
+    const roomId = document.getElementById('room-id').value;
+    let stompClient, pc, localStream;
+
+    // STUN + public TURN for media relay
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        {
+          urls: 'turn:relay.metered.ca:443',
+          username: 'openai',
+          credential: 'openai'
+        }
+      ]
+    };
+
+    // Initialize the entire signaling + peer pipeline
+    async function init() {
+      // 1) Connect STOMP and set up subscriptions
+      await new Promise((resolve, reject) => {
+        const sock = new SockJS('/signal');
+        stompClient = Stomp.over(sock);
+        stompClient.connect({}, () => {
+          log('🟢 Signaling connected');
+
+          // Subscribe to incoming offers
+          stompClient.subscribe(`/topic/offer/${roomId}`, async ({ body }) => {
+            const offer = JSON.parse(body);
+            log('📨 Offer received');
+            await setupMediaAndPeer();
+            await pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            stompClient.send(`/app/answer/${roomId}`, {}, JSON.stringify(answer));
+            log('📤 Answer sent');
+          });
+
+          // Subscribe to incoming answers
+          stompClient.subscribe(`/topic/answer/${roomId}`, async ({ body }) => {
+            const answer = JSON.parse(body);
+            log('📨 Answer received');
+            await pc.setRemoteDescription(answer);
+          });
+
+          // Subscribe to incoming ICE
+          stompClient.subscribe(`/topic/ice/${roomId}`, async ({ body }) => {
+            const cand = JSON.parse(body);
+            try {
+              await pc.addIceCandidate(cand);
+              log('✔ ICE added');
+            } catch (e) {
+              log('❌ ICE error: ' + e);
+            }
+          });
+
+          resolve();
+        }, err => {
+          log('🔴 Signaling error: ' + err);
+          reject(err);
+        });
+      });
+
+      // 2) Now set up media + PeerConnection handlers
+      await setupMediaAndPeer();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    // “Start Call” as the caller
+    document.getElementById('startCall').onclick = async () => {
+      try {
+        // ensure peer connection is initialized
+        await setupMediaAndPeer(); 
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        stompClient.send(`/app/offer/${roomId}`, {}, JSON.stringify(offer));
+        log('📤 Offer sent');
+      } catch (err) {
+        log('StartCall error: ' + err);
+      }
+    };
+
+    // Shared: get media, create RTCPeerConnection, hook ICE + tracks
+    async function setupMediaAndPeer() {
+      if (!localStream) {
+        log('Requesting camera/mic…');
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = localStream;
+        log('Local media started');
+      }
+
+      if (!pc) {
+        pc = new RTCPeerConnection(rtcConfig);
+
+        pc.onicecandidate = e => {
+          if (e.candidate) {
+            stompClient.send(`/app/ice/${roomId}`, {}, JSON.stringify(e.candidate));
+            log('📤 ICE sent');
+          }
+        };
+
+        pc.ontrack = e => {
+          log('👀 Remote track');
+          const rv = document.getElementById('remoteVideo');
+          rv.srcObject = e.streams[0];
+          rv.play().catch(() => log('⚠ Remote autoplay blocked'));
+        };
+
+        pc.onconnectionstatechange = () => {
+          log('Connection state: ' + pc.connectionState);
+        };
+      }
+
+      // Add any missing local tracks to the PC
+      const used = pc.getSenders().map(s => s.track);
+      localStream.getTracks().forEach(track => {
+        if (!used.includes(track)) {
+          pc.addTrack(track, localStream);
+          log('Added track: ' + track.kind);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
